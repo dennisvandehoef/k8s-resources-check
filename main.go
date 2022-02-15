@@ -39,7 +39,7 @@ func main() {
 
 	fmt.Println("pod (ns)| CPU use/request/limit = request%/limi% | MEM use/request/limit = request%/limi%")
 	for _, r := range resources {
-		fmt.Printf("%s (%s) | %dm/%dm/%dm = %.2f%%/%.2f%% | %dM/%dM/%dM = %.2f%%/%.2f%%\n",
+		fmt.Printf("%s (%s) | %dm/%dm/%dm = %.2f%%/%.2f%% | %dMi/%dMi/%dMi = %.2f%%/%.2f%%\n",
 			r.Name,
 			r.Namespace,
 			r.Usage.Cpu,
@@ -47,9 +47,9 @@ func main() {
 			r.Limit.Cpu,
 			r.RequestedCpuUsage(),
 			r.LimitCpuUsage(),
-			r.Usage.Memory/(1000*1000*1000),
-			r.Requested.Memory/(1000*1000*1000),
-			r.Limit.Memory/(1000*1000*1000),
+			r.Usage.MemoryAsMebibyte(),
+			r.Requested.MemoryAsMebibyte(),
+			r.Limit.MemoryAsMebibyte(),
 			r.RequestedMemUsage(),
 			r.LimitMemUsage(),
 		)

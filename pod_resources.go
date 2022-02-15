@@ -15,6 +15,19 @@ type Resource struct {
 	Memory int64
 }
 
+const (
+	BibyteFactor   = float64(1.048576)
+	MegabyteFactor = 1000000000 // 1000 * 1000 * 1000
+)
+
+func (r *Resource) MemoryAsMegabyte() int64 {
+	return r.Memory / MegabyteFactor
+}
+
+func (r *Resource) MemoryAsMebibyte() int64 {
+	return int64(float64(r.MemoryAsMegabyte()) / BibyteFactor)
+}
+
 func (pr *PodResources) RequestedMemUsage() float64 {
 	if pr.Requested.Memory == 0.0 {
 		return 0.0
