@@ -9,17 +9,6 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type PodResources struct {
-	Name      string
-	Requested Resource
-	Limit     Resource
-}
-
-type Resource struct {
-	Cpu    int64
-	Memory int64
-}
-
 func getResources(config *rest.Config, ns string) (map[string]PodResources, error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -44,7 +33,6 @@ func getResources(config *rest.Config, ns string) (map[string]PodResources, erro
 				continue
 			}
 			pod := PodResources{
-				Name: p.Name,
 				Requested: Resource{
 					Cpu:    c.Resources.Requests.Cpu().MilliValue(),
 					Memory: c.Resources.Requests.Memory().MilliValue(),

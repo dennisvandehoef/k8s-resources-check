@@ -11,13 +11,7 @@ import (
 	metricsclientset "k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
-type PodUsage struct {
-	Name   string
-	Cpu    int64
-	Memory int64
-}
-
-func getUsage(config *rest.Config, ns string) (map[string]PodUsage, error) {
+func getUsage(config *rest.Config, ns string) (map[string]PodResources, error) {
 	metricsClient, err := metricsclientset.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -33,20 +27,21 @@ func getUsage(config *rest.Config, ns string) (map[string]PodUsage, error) {
 		return nil, err
 	}
 
-	result := make(map[string]PodUsage)
+	result := make(map[string]PodResources)
 	for _, pod := range metrics.Items {
 		for _, container := range pod.Containers {
 			if !strings.HasPrefix(pod.Name, container.Name) {
 				continue
 			}
 
-			pod := PodUsage{
-				Name:   pod.Name,
-				Cpu:    container.Usage.Cpu().MilliValue(),
-				Memory: container.Usage.Memory().MilliValue(),
+			r := PodResources{
+				Usage: Resource{
+					Cpu:    container.Usage.Cpu().MilliValue(),
+					Memory: container.Usage.Memory().MilliValue(),
+				},
 			}
 
-			result[pod.Name] = pod
+			result[pod.Name] = r
 		}
 	}
 
