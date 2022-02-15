@@ -5,26 +5,13 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type PodResources struct {
-	Name      string
-	Namespace string
-	Requested Resource
-	Limit     Resource
-	Usage     Resource
-}
-
-type Resource struct {
-	Cpu    int64
-	Memory int64
-}
-
 func main() {
-	ns := "sales"
 	kubeconfig := filepath.Join(
 		os.Getenv("HOME"), ".kube", "config",
 	)
@@ -40,17 +27,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("pod (ns)| CPU use/request/limit | MEM use/request/limit")
+	sort.Slice(resources, func(i, j int) bool {
+		return resources[i].maxRequestedUsage() > resources[j].maxRequestedUsage()
+	})
+
+	fmt.Println("pod (ns)| CPU use/request/limit = request%/limi% | MEM use/request/limit = request%/limi%")
 	for _, r := range resources {
-		fmt.Printf("%s (%s) | %dm/%dm/%dm | %dM/%dM/%dM\n",
+		fmt.Printf("%s (%s) | %dm/%dm/%dm = %.2f%%/%.2f%% | %dM/%dM/%dM = %.2f%%/%.2f%%\n",
 			r.Name,
 			r.Namespace,
 			r.Usage.Cpu,
 			r.Requested.Cpu,
 			r.Limit.Cpu,
+			r.RequestedCpuUsage(),
+			r.LimitCpuUsage(),
 			r.Usage.Memory/(1000*1000*1000),
 			r.Requested.Memory/(1000*1000*1000),
 			r.Limit.Memory/(1000*1000*1000),
+			r.RequestedMemUsage(),
+			r.LimitMemUsage(),
 		)
 	}
 }
