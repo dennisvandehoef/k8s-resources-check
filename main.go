@@ -21,10 +21,16 @@ func main() {
 	}
 
 	resources := []PodResources{}
-
-	err = processNamespace(config, ns, &resources)
+	namespaces, err := getNamespaces(config)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	for _, ns := range namespaces {
+		err = processNamespace(config, ns, &resources)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	sort.Slice(resources, func(i, j int) bool {
