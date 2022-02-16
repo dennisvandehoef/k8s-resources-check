@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func getResources(config *rest.Config, ns string) (map[string]PodResources, error) {
+func getResources(config *rest.Config, ns string) ([]Owner, error) {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -25,14 +25,15 @@ func getResources(config *rest.Config, ns string) (map[string]PodResources, erro
 		return nil, err
 	}
 
-	results := make(map[string]PodResources)
+	results := make(map[string]*Owner)
 
 	for _, p := range podList.Items {
 		for _, c := range p.Spec.Containers {
 			if !strings.HasPrefix(p.Name, c.Name) {
 				continue
 			}
-			pod := PodResources{
+			pod := Pod{
+				Name: p.Name,
 				Requested: Resource{
 					Cpu:    c.Resources.Requests.Cpu().MilliValue(),
 					Memory: c.Resources.Requests.Memory().MilliValue(),
@@ -43,9 +44,33 @@ func getResources(config *rest.Config, ns string) (map[string]PodResources, erro
 				},
 			}
 
-			results[p.Name] = pod
+			ownerName := "None"
+			ownerKind := "Unknown"
+
+			if len(p.OwnerReferences) > 0 {
+				or := p.OwnerReferences[0]
+				ownerName = or.Name
+				ownerKind = or.Kind
+			}
+
+			owner := results[ownerName]
+			if owner == nil {
+				owner = &Owner{
+					Name: ownerName,
+					Kind: ownerKind,
+				}
+				results[ownerName] = owner
+			}
+			owner.Pods = append(owner.Pods, pod)
 		}
 	}
 
-	return results, nil
+	// Drop the map before returning
+	slResults := make([]Owner, 0, len(results))
+
+	for _, value := range results {
+		slResults = append(slResults, *value)
+	}
+
+	return slResults, nil
 }
