@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -26,16 +27,23 @@ func main() {
 	}
 
 	for _, ns := range namespaces {
-		fmt.Println("Processing namespace: " + ns)
 		err = processNamespace(config, ns, &owners)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	// sort.Slice(resources, func(i, j int) bool {
-	// 	return resources[i].maxRequestedUsage() > resources[j].maxRequestedUsage()
-	// })
+	// Sort all pods within an owner
+	for _, o := range owners {
+		sort.Slice(o.Pods, func(i, j int) bool {
+			return o.Pods[i].maxRequestedUsage() > o.Pods[j].maxRequestedUsage()
+		})
+	}
+
+	// sort owners according there higest pod
+	sort.Slice(owners, func(i, j int) bool {
+		return owners[i].Pods[0].maxRequestedUsage() > owners[j].Pods[0].maxRequestedUsage()
+	})
 
 	fmt.Println("controller name (type) namespace")
 	fmt.Println("- pod | CPU use/request/limit = request%/limit% | MEM use/request/limit = request%/limit%")
@@ -62,10 +70,13 @@ func main() {
 }
 
 func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
+	fmt.Println("Processing namespace: " + ns)
+
 	reservedResourceOwners, err := getResources(config, ns)
 	if err != nil {
 		return err
 	}
+
 	usage, err := getUsage(config, ns)
 	if err != nil {
 		return err
@@ -73,8 +84,8 @@ func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
 
 	for _, o := range reservedResourceOwners {
 		o.Namespace = ns
-		for _, p := range o.Pods {
-			p.Usage = usage[p.Name].Usage
+		for i, p := range o.Pods {
+			o.Pods[i].Usage = usage[p.Name]
 		}
 
 		*owners = append(*owners, o)

@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type Owner struct {
 	Name      string
 	Namespace string
@@ -60,6 +62,6 @@ func (pr *Pod) LimitCpuUsage() float64 {
 	return (float64(pr.Usage.Cpu) / float64(pr.Limit.Cpu)) * 100.0
 }
 
-// func (pr *Pod) maxRequestedUsage() float64 {
-// 	return math.Max(pr.RequestedCpuUsage(), pr.RequestedMemUsage())
-// }
+func (pr *Pod) maxRequestedUsage() float64 {
+	return math.Max(pr.RequestedCpuUsage(), pr.RequestedMemUsage())
+}

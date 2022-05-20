@@ -26,7 +26,5 @@ func getNamespaces(config *rest.Config) ([]string, error) {
 		result = append(result, n.Name)
 	}
 
-	result = []string{"sales"}
-
 	return result, nil
 }

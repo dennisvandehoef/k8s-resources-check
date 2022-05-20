@@ -65,7 +65,6 @@ func getResources(config *rest.Config, ns string) ([]Owner, error) {
 		}
 	}
 
-	// Drop the map before returning
 	slResults := make([]Owner, 0, len(results))
 
 	for _, value := range results {
