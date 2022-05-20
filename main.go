@@ -20,65 +20,75 @@ func main() {
 		log.Fatal(err)
 	}
 
-	resources := []PodResources{}
+	owners := []Owner{}
 	namespaces, err := getNamespaces(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for _, ns := range namespaces {
-		err = processNamespace(config, ns, &resources)
+		err = processNamespace(config, ns, &owners)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	sort.Slice(resources, func(i, j int) bool {
-		return resources[i].maxRequestedUsage() > resources[j].maxRequestedUsage()
+	// Sort all pods within an owner
+	for _, o := range owners {
+		sort.Slice(o.Pods, func(i, j int) bool {
+			return o.Pods[i].maxRequestedUsage() > o.Pods[j].maxRequestedUsage()
+		})
+	}
+
+	// sort owners according there higest pod
+	sort.Slice(owners, func(i, j int) bool {
+		return owners[i].Pods[0].maxRequestedUsage() > owners[j].Pods[0].maxRequestedUsage()
 	})
 
-	fmt.Println("pod (ns)| CPU use/request/limit = request%/limi% | MEM use/request/limit = request%/limi%")
-	for _, r := range resources {
-		fmt.Printf("%s (%s) | %dm/%dm/%dm = %.2f%%/%.2f%% | %dMi/%dMi/%dMi = %.2f%%/%.2f%%\n",
-			r.Name,
-			r.Namespace,
-			r.Usage.Cpu,
-			r.Requested.Cpu,
-			r.Limit.Cpu,
-			r.RequestedCpuUsage(),
-			r.LimitCpuUsage(),
-			r.Usage.MemoryAsMebibyte(),
-			r.Requested.MemoryAsMebibyte(),
-			r.Limit.MemoryAsMebibyte(),
-			r.RequestedMemUsage(),
-			r.LimitMemUsage(),
-		)
+	fmt.Println("controller name (type) namespace")
+	fmt.Println("- pod | CPU use/request/limit = request%/limit% | MEM use/request/limit = request%/limit%")
+	fmt.Println("--------------------------------------")
+	for _, o := range owners {
+		fmt.Printf("%s (%s) %s:\n", o.Name, o.Kind, o.Namespace)
+		for _, p := range o.Pods {
+			fmt.Printf("- %s | %dm/%dm/%dm = %.2f%%/%.2f%% | %dMi/%dMi/%dMi = %.2f%%/%.2f%%\n",
+				p.Name,
+				p.Usage.Cpu,
+				p.Requested.Cpu,
+				p.Limit.Cpu,
+				p.RequestedCpuUsage(),
+				p.LimitCpuUsage(),
+				p.Usage.MemoryAsMebibyte(),
+				p.Requested.MemoryAsMebibyte(),
+				p.Limit.MemoryAsMebibyte(),
+				p.RequestedMemUsage(),
+				p.LimitMemUsage(),
+			)
+		}
+
 	}
 }
 
-func processNamespace(config *rest.Config, ns string, resources *[]PodResources) error {
-	reservedResources, err := getResources(config, ns)
+func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
+	fmt.Println("Processing namespace: " + ns)
+
+	reservedResourceOwners, err := getResources(config, ns)
 	if err != nil {
 		return err
 	}
+
 	usage, err := getUsage(config, ns)
 	if err != nil {
 		return err
 	}
 
-	for k, pu := range usage {
-		rr := reservedResources[k]
-
-		r := PodResources{
-			Name:      k,
-			Namespace: ns,
-			Usage:     pu.Usage,
-			Requested: rr.Requested,
-			Limit:     rr.Limit,
+	for _, o := range reservedResourceOwners {
+		o.Namespace = ns
+		for i, p := range o.Pods {
+			o.Pods[i].Usage = usage[p.Name]
 		}
 
-		*resources = append(*resources, r)
+		*owners = append(*owners, o)
 	}
-
 	return nil
 }

@@ -2,9 +2,15 @@ package main
 
 import "math"
 
-type PodResources struct {
+type Owner struct {
 	Name      string
 	Namespace string
+	Kind      string
+	Pods      []Pod
+}
+
+type Pod struct {
+	Name      string
 	Requested Resource
 	Limit     Resource
 	Usage     Resource
@@ -28,34 +34,34 @@ func (r *Resource) MemoryAsMebibyte() int64 {
 	return int64(float64(r.MemoryAsMegabyte()) / BibyteFactor)
 }
 
-func (pr *PodResources) RequestedMemUsage() float64 {
+func (pr *Pod) RequestedMemUsage() float64 {
 	if pr.Requested.Memory == 0.0 {
 		return 0.0
 	}
 	return (float64(pr.Usage.Memory) / float64(pr.Requested.Memory)) * 100.0
 }
 
-func (pr *PodResources) LimitMemUsage() float64 {
+func (pr *Pod) LimitMemUsage() float64 {
 	if pr.Limit.Memory == 0.0 {
 		return 0.0
 	}
 	return (float64(pr.Usage.Memory) / float64(pr.Limit.Memory)) * 100.0
 }
 
-func (pr *PodResources) RequestedCpuUsage() float64 {
+func (pr *Pod) RequestedCpuUsage() float64 {
 	if pr.Requested.Cpu == 0.0 {
 		return 0.0
 	}
 	return (float64(pr.Usage.Cpu) / float64(pr.Requested.Cpu)) * 100.0
 }
 
-func (pr *PodResources) LimitCpuUsage() float64 {
+func (pr *Pod) LimitCpuUsage() float64 {
 	if pr.Limit.Cpu == 0.0 {
 		return 0.0
 	}
 	return (float64(pr.Usage.Cpu) / float64(pr.Limit.Cpu)) * 100.0
 }
 
-func (pr *PodResources) maxRequestedUsage() float64 {
+func (pr *Pod) maxRequestedUsage() float64 {
 	return math.Max(pr.RequestedCpuUsage(), pr.RequestedMemUsage())
 }
