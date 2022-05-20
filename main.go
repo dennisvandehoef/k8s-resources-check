@@ -26,6 +26,7 @@ func main() {
 	}
 
 	for _, ns := range namespaces {
+		fmt.Println("Processing namespace: " + ns)
 		err = processNamespace(config, ns, &owners)
 		if err != nil {
 			log.Fatal(err)
