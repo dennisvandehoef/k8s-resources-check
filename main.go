@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -45,28 +46,34 @@ func main() {
 		return owners[i].Pods[0].maxRequestedUsage() > owners[j].Pods[0].maxRequestedUsage()
 	})
 
-	fmt.Println("controller name (type) namespace")
-	fmt.Println("- pod | CPU use/request/limit = request%/limit% | MEM use/request/limit = request%/limit%")
-	fmt.Println("--------------------------------------")
-	for _, o := range owners {
-		fmt.Printf("%s (%s) %s:\n", o.Name, o.Kind, o.Namespace)
-		for _, p := range o.Pods {
-			fmt.Printf("- %s | %dm/%dm/%dm = %.2f%%/%.2f%% | %dMi/%dMi/%dMi = %.2f%%/%.2f%%\n",
-				p.Name,
-				p.Usage.Cpu,
-				p.Requested.Cpu,
-				p.Limit.Cpu,
-				p.RequestedCpuUsage(),
-				p.LimitCpuUsage(),
-				p.Usage.MemoryAsMebibyte(),
-				p.Requested.MemoryAsMebibyte(),
-				p.Limit.MemoryAsMebibyte(),
-				p.RequestedMemUsage(),
-				p.LimitMemUsage(),
-			)
-		}
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true}
 
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Pod name", "Parent", "Namespace", "CPU", "CPU", "CPU", "Memory", "Memory", "Memory"}, rowConfigAutoMerge)
+	t.AppendHeader(table.Row{"", "", "", "used", "request", "limit", "used", "request", "limit"})
+
+	for _, o := range owners {
+		t.AppendSeparator()
+		for _, p := range o.Pods {
+			t.AppendRows([]table.Row{
+				{
+					p.Name,
+					o.Kind,
+					o.Namespace,
+					p.Usage.Cpu,
+					fmt.Sprintf("%d (%.2f%%)", p.Requested.Cpu, p.RequestedCpuUsage()),
+					fmt.Sprintf("%d (%.2f%%)", p.Limit.Cpu, p.LimitCpuUsage()),
+					fmt.Sprintf("%dMi", p.Usage.MemoryAsMebibyte()),
+					fmt.Sprintf("%dMi (%.2f%%)", p.Requested.MemoryAsMebibyte(), p.RequestedMemUsage()),
+					fmt.Sprintf("%dMi (%.2f%%)", p.Limit.MemoryAsMebibyte(), p.LimitMemUsage()),
+				},
+			})
+		}
+		t.AppendSeparator()
 	}
+
+	t.Render()
 }
 
 func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
