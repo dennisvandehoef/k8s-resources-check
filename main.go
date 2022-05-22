@@ -7,10 +7,14 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/dennisvandehoef/k8s-resources-check/cnf"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
+
+func init() {
+	cnf.FromFlags()
+}
 
 func main() {
 	kubeconfig := filepath.Join(
@@ -22,9 +26,15 @@ func main() {
 	}
 
 	owners := []Owner{}
-	namespaces, err := getNamespaces(config)
-	if err != nil {
-		log.Fatal(err)
+	var namespaces []string
+
+	if cnf.AllNamespaces {
+		namespaces, err = getNamespaces(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		namespaces = []string{cnf.Namespace}
 	}
 
 	for _, ns := range namespaces {
@@ -74,28 +84,4 @@ func main() {
 	}
 
 	t.Render()
-}
-
-func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
-	fmt.Println("Processing namespace: " + ns)
-
-	reservedResourceOwners, err := getResources(config, ns)
-	if err != nil {
-		return err
-	}
-
-	usage, err := getUsage(config, ns)
-	if err != nil {
-		return err
-	}
-
-	for _, o := range reservedResourceOwners {
-		o.Namespace = ns
-		for i, p := range o.Pods {
-			o.Pods[i].Usage = usage[p.Name]
-		}
-
-		*owners = append(*owners, o)
-	}
-	return nil
 }

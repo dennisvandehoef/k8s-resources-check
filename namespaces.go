@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -27,4 +28,28 @@ func getNamespaces(config *rest.Config) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func processNamespace(config *rest.Config, ns string, owners *[]Owner) error {
+	fmt.Println("Processing namespace: " + ns)
+
+	reservedResourceOwners, err := getResources(config, ns)
+	if err != nil {
+		return err
+	}
+
+	usage, err := getUsage(config, ns)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range reservedResourceOwners {
+		o.Namespace = ns
+		for i, p := range o.Pods {
+			o.Pods[i].Usage = usage[p.Name]
+		}
+
+		*owners = append(*owners, o)
+	}
+	return nil
 }
